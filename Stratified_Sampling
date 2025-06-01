@@ -1,0 +1,51 @@
+#AI DECLARATION
+#AI HELPED ME EXTENSIVELY IN CONSTRUCTING THE CODE BASE, NAMELY GROK AI
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(123)
+
+population = np.arange(1, 101)
+num_samples = 100
+sample_size = 12
+
+# ---------- Problem 58: Simple Random Sampling ----------
+simple_means = []
+for _ in range(num_samples):
+    sample = np.random.choice(population, size=sample_size, replace=False)
+    simple_means.append(np.mean(sample))
+
+# ---------- Problem 59: 2-Strata Sampling (50-50) ----------
+two_strata_means = []
+stratum1 = population[:50]
+stratum2 = population[50:]
+
+for _ in range(num_samples):
+    s1_sample = np.random.choice(stratum1, size=6, replace=False)
+    s2_sample = np.random.choice(stratum2, size=6, replace=False)
+    stratified_sample = np.concatenate([s1_sample, s2_sample])
+    two_strata_means.append(np.mean(stratified_sample))
+
+# ---------- Problem 59: 4-Strata Sampling (25-25-25-25) ----------
+four_strata_means = []
+strata = [population[i:i+25] for i in range(0, 100, 25)]
+
+for _ in range(num_samples):
+    sampled = [np.random.choice(s, size=3, replace=False) for s in strata]
+    stratified_sample = np.concatenate(sampled)
+    four_strata_means.append(np.mean(stratified_sample))
+
+# ---------- Plotting ----------
+plt.figure(figsize=(12, 6))
+
+plt.hist(simple_means, bins=10, alpha=0.6, label="Simple Random Sampling", edgecolor='black')
+plt.hist(two_strata_means, bins=10, alpha=0.6, label="Stratified (2 Strata)", edgecolor='black')
+plt.hist(four_strata_means, bins=10, alpha=0.6, label="Stratified (4 Strata)", edgecolor='black')
+
+plt.title("Comparison of Sampling Distributions of the Mean")
+plt.xlabel("Sample Mean")
+plt.ylabel("Frequency")
+plt.legend()
+plt.grid(axis='y', linestyle='--', alpha=0.5)
+plt.show()
