@@ -1,0 +1,72 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import norm
+
+# Parameters
+alpha_true = 2.0  # True parameter value
+x0 = 1.0         # Scale parameter
+n = 100          # Sample size
+num_simulations = 10_000  # Number of simulations
+
+# Generate Pareto samples (shape α_true, minimum x0)
+samples = x0 * (1 + np.random.pareto(alpha_true, size=(num_simulations, n)))
+
+# Method of Moments (MoM) estimation
+sample_means = samples.mean(axis=1)
+alpha_mom_estimates = sample_means / (sample_means - x0)
+
+# MLE estimation
+log_ratios = np.log(samples/x0)
+sum_log_ratios = log_ratios.sum(axis=1)
+alpha_mle_estimates = n / sum_log_ratios
+
+# Theoretical asymptotic distribution for MLE
+asymptotic_variance = alpha_true**2 / n
+asymptotic_std = np.sqrt(asymptotic_variance)
+
+# Create figure with two subplots
+plt.figure(figsize=(14, 6))
+
+# First subplot: Method of Moments
+plt.subplot(1, 2, 1)
+plt.hist(alpha_mom_estimates, bins=50, density=True, alpha=0.7, color='blue', edgecolor='black')
+plt.axvline(x=alpha_true, color='red', linestyle='--', linewidth=2, label=f'True α = {alpha_true}')
+mom_mean = np.mean(alpha_mom_estimates)
+plt.axvline(x=mom_mean, color='green', linestyle='--', linewidth=2, label=f'Mean MoM = {mom_mean:.3f}')
+plt.xlabel('α estimate (Method of Moments)')
+plt.ylabel('Density')
+plt.title(f'MoM Estimates (n={n}, {num_simulations:,} sims)\nBias: {mom_mean - alpha_true:.3f}, Var: {np.var(alpha_mom_estimates):.3f}')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+# Second subplot: Maximum Likelihood Estimation
+plt.subplot(1, 2, 2)
+counts, bins, patches = plt.hist(alpha_mle_estimates, bins=50, density=True, alpha=0.7,
+                               color='blue', edgecolor='black', label='MLE Estimates')
+x = np.linspace(alpha_true - 4*asymptotic_std, alpha_true + 4*asymptotic_std, 1000)
+plt.plot(x, norm.pdf(x, loc=alpha_true, scale=asymptotic_std),
+        'r-', linewidth=2, label=f'Asymptotic N({alpha_true}, {asymptotic_variance:.3f})')
+plt.axvline(x=alpha_true, color='black', linestyle='--', linewidth=2, label=f'True α = {alpha_true}')
+mle_mean = np.mean(alpha_mle_estimates)
+plt.axvline(x=mle_mean, color='green', linestyle='--', linewidth=2, label=f'Mean MLE = {mle_mean:.3f}')
+plt.xlabel('α estimate (MLE)')
+plt.ylabel('Density')
+plt.title(f'MLE Estimates vs Asymptotic Theory (n={n})\nBias: {mle_mean - alpha_true:.3f}, Var: {np.var(alpha_mle_estimates):.3f}')
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.xlim(alpha_true - 4*asymptotic_std, alpha_true + 4*asymptotic_std)
+
+plt.tight_layout()
+plt.show()
+
+# Print summary statistics
+print("\nMethod of Moments Results:")
+print(f"Mean: {mom_mean:.4f}")
+print(f"Bias: {mom_mean - alpha_true:.4f}")
+print(f"Variance: {np.var(alpha_mom_estimates):.4f}")
+
+print("\nMaximum Likelihood Results:")
+print(f"Mean: {mle_mean:.4f}")
+print(f"Bias: {mle_mean - alpha_true:.4f}")
+print(f"Variance: {np.var(alpha_mle_estimates):.4f}")
+print(f"Asymptotic Variance: {asymptotic_variance:.4f}")
