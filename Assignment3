@@ -1,0 +1,125 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import scipy.stats as stats
+import math
+
+#POPULATION SIMULATION
+np.random.seed(343)
+alpha, beta = 2, 5
+N = 10000
+
+income = np.random.beta(alpha, beta, N) * 300000
+
+# Plot
+#plt.hist(income, bins=50, density=True)
+#plt.title("Household Income Distribution of ShiKahr")
+#plt.xlabel("Income ($)")
+#plt.ylabel("Density")
+#plt.show()
+
+df_income = pd.DataFrame({'income': income})
+quantile_edges = [0, 0.15, 0.30, 0.55, 0.85, 0.99, 1.0]
+
+
+# Define class labels in the custom order
+class_labels = [
+    'Underclass',
+    'Working-poor class',
+    'Working class',
+    'Lower middle class',
+    'Upper middle class',
+    'Capitalist class'
+]
+
+# Assign stratum based on income percentiles
+df_income['stratum'] = pd.qcut(
+    df_income['income'],
+    q=quantile_edges,
+    labels=class_labels
+)
+stratum_counts = df_income['stratum'].value_counts().sort_index()
+print(stratum_counts)
+
+
+#NO FPCF
+##############################################################################3333333333333
+grouped = df_income.groupby('stratum')['income']
+stratum_vars = grouped.var()
+stratum_sizes = grouped.count()
+
+N = stratum_sizes.sum()  # Total population size
+n = 500  # Total sample size
+
+stratum_weights = stratum_sizes / N
+stratum_sample_sizes = (n * stratum_weights).round().astype(int)
+
+# Ensure sum of sample sizes is exactly n (adjust if rounding causes mismatch)
+stratum_sample_sizes = stratum_sample_sizes.clip(lower=1)  # Ensure at least 1 sample per stratum
+if stratum_sample_sizes.sum() != n:
+    stratum_sample_sizes.iloc[-1] += n - stratum_sample_sizes.sum()
+
+# Perform stratified sampling
+df_sample = df_income.groupby('stratum', group_keys=False).apply(
+    lambda x: x.sample(n=stratum_sample_sizes.loc[x.name], random_state=42)
+)
+
+# Compute stratified mean and its variance
+sample_means = df_sample.groupby('stratum')['income'].mean()
+sample_vars = df_sample.groupby('stratum')['income'].var()
+weighted_mean = (stratum_weights * sample_means).sum()
+
+# Correct variance calculation
+var_strat_mean = (stratum_weights**2 * sample_vars / stratum_sample_sizes).sum()
+
+print(f"Stratified Mean: {weighted_mean}")
+print(f"Variance of Stratified Mean: {var_strat_mean}")
+
+#####################################################################
+#CONFIDENCE INTERVAL
+z = 1.96
+se = np.sqrt(var_strat_mean)
+
+ci_lower1 = weighted_mean - z * se
+ci_upper1 = weighted_mean + z * se
+
+x = np.linspace(weighted_mean - 3*se, weighted_mean + 3*se, 100)
+plt.plot(x, stats.norm.pdf(x, weighted_mean, se))
+plt.axvline(x=ci_lower1, color='r', linestyle='--')
+plt.axvline(x=ci_upper1, color='r', linestyle='--')
+plt.title("Sampling Distribution of the Mean Income of ShiKahr")
+plt.xlabel("Income")
+plt.ylabel("Density")
+plt.legend()
+plt.show()
+print(f"Stratified sample mean: {weighted_mean:.2f}")
+print(f"95% CI: ({ci_lower1:.2f}, {ci_upper1:.2f})")
+
+#WITH FPCF
+var_strat_mean = (
+    (stratum_weights ** 2) *
+    (sample_vars / stratum_sample_sizes) *
+    (1 - stratum_sample_sizes / stratum_sizes)
+).sum()
+
+z = 1.96
+se = np.sqrt(var_strat_mean)
+
+ci_lower = weighted_mean - z * se
+ci_upper = weighted_mean + z * se
+
+x = np.linspace(weighted_mean - 3*se, weighted_mean + 3*se, 100)
+plt.plot(x, stats.norm.pdf(x, weighted_mean, se))
+plt.axvline(x=ci_lower1, color='r', linestyle='--')
+plt.axvline(x=ci_upper1, color='r', linestyle='--')
+plt.axvline(x=ci_lower, color='g', linestyle='--')
+plt.axvline(x=ci_upper, color='g', linestyle='--')
+plt.title("Sampling Distribution of the Mean Income of ShiKahr")
+plt.xlabel("Income")
+plt.ylabel("Density")
+plt.legend()
+plt.show()
+print(f"Stratified sample mean: {weighted_mean:.2f}")
+print(f"95% CI: ({ci_lower:.2f}, {ci_upper:.2f})")
+print(f"Variance of Stratified Mean: {var_strat_mean}")
+print(f"Variance of Stratified Mean: {var_strat_mean}")
